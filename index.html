@@ -2,123 +2,111 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Карта Поисковика</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
+    body { margin: 0; font-family: sans-serif; }
     #map { height: 100vh; }
-    #controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 999;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    .form-box {
+      position: absolute; top: 10px; left: 10px; background: white; padding: 10px;
+      z-index: 1000; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.2);
       width: 300px;
     }
-    #controls input, #controls textarea, #controls select, #controls button {
-      width: 100%;
-      margin-bottom: 6px;
-      padding: 6px;
-      font-size: 14px;
+    input, select, textarea, button {
+      width: 100%; margin-top: 5px; margin-bottom: 10px; padding: 8px;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <select id="filterCategory">
+  <div class="form-box">
+    <select id="filter-category">
       <option value="">Все категории</option>
       <option value="История">История</option>
       <option value="Укрепление">Укрепление</option>
+      <option value="Поселение">Поселение</option>
     </select>
-    <input type="text" id="searchInput" placeholder="Поиск по названию" />
-    <hr>
-    <input type="text" id="name" placeholder="Название объекта" />
-    <textarea id="desc" placeholder="Описание объекта"></textarea>
-    <input type="text" id="coords" placeholder="Координаты (lat,lng)" />
-    <select id="category">
+    <input type="text" id="search" placeholder="Название объекта">
+    <textarea id="description" placeholder="Описание объекта"></textarea>
+    <input type="text" id="coords" placeholder="Координаты (lat,lng)">
+    <select id="add-category">
       <option value="История">История</option>
       <option value="Укрепление">Укрепление</option>
+      <option value="Поселение">Поселение</option>
     </select>
     <button onclick="addObject()">Добавить объект</button>
   </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbw_MBtaH4cnULuZeF8dIOwSKB3qvXwVGFYX1td4gq-sqow1IKJ6Vub5HXk2Je_vPLP4bw/exec";
+    const sheetUrl = 'https://script.google.com/macros/s/AKfycbw_MBtaH4cnULuZeF8dIOwSKB3qvXwVGFYX1td4gq-sqow1IKJ6Vub5HXk2Je_vPLP4bw/exec';
 
-    const map = L.map('map').setView([49.803, 73.109], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-    }).addTo(map);
+    const map = L.map('map').setView([49.8, 73.1], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     let markers = [];
 
-    async function loadObjects() {
-      const res = await fetch(apiUrl);
-      const data = await res.json();
-      displayObjects(data);
+    function loadData() {
+      fetch(sheetUrl)
+        .then(res => res.json())
+        .then(data => {
+          clearMarkers();
+
+          const search = document.getElementById('search').value.toLowerCase();
+          const category = document.getElementById('filter-category').value;
+
+          data.forEach(obj => {
+            const matchCategory = !category || obj.category === category;
+            const matchSearch = !search || obj.name.toLowerCase().includes(search);
+
+            if (matchCategory && matchSearch) {
+              const [lat, lng] = obj.coords.split(',').map(Number);
+              const marker = L.marker([lat, lng])
+                .bindPopup(`<b>${obj.name}</b><br>${obj.description}`)
+                .addTo(map);
+              markers.push(marker);
+            }
+          });
+        });
     }
 
-    function displayObjects(objects) {
+    function clearMarkers() {
       markers.forEach(m => map.removeLayer(m));
       markers = [];
-      const filter = document.getElementById("filterCategory").value.toLowerCase();
-      const search = document.getElementById("searchInput").value.toLowerCase();
-
-      objects.forEach(obj => {
-        if (
-          (filter === '' || obj.category.toLowerCase() === filter) &&
-          (search === '' || obj.name.toLowerCase().includes(search))
-        ) {
-          const [lat, lng] = obj.coords.split(',').map(Number);
-          const marker = L.marker([lat, lng])
-            .addTo(map)
-            .bindPopup(`<b>${obj.name}</b><br>${obj.desc}<br><i>${obj.category}</i>`);
-          markers.push(marker);
-        }
-      });
     }
 
-    async function addObject() {
-      const name = document.getElementById("name").value.trim();
-      const desc = document.getElementById("desc").value.trim();
-      const coords = document.getElementById("coords").value.trim();
-      const category = document.getElementById("category").value.trim();
+    function addObject() {
+      const name = document.getElementById('search').value;
+      const description = document.getElementById('description').value;
+      const coords = document.getElementById('coords').value;
+      const category = document.getElementById('add-category').value;
 
       if (!name || !coords) {
-        alert("Введите как минимум название и координаты");
+        alert("Название и координаты обязательны.");
         return;
       }
 
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, desc, coords, category })
-      });
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('coords', coords);
+      formData.append('category', category);
 
-      if (res.ok) {
+      fetch(sheetUrl, {
+        method: 'POST',
+        body: formData
+      }).then(() => {
         alert("Объект добавлен!");
-        loadObjects();
-      } else {
-        alert("Ошибка при добавлении");
-      }
+        loadData();
+      });
     }
 
-    document.getElementById("filterCategory").addEventListener("change", loadObjects);
-    document.getElementById("searchInput").addEventListener("input", loadObjects);
+    document.getElementById('search').addEventListener('input', loadData);
+    document.getElementById('filter-category').addEventListener('change', loadData);
 
-    loadObjects();
+    loadData();
   </script>
 </body>
 </html>
-
-
-     
