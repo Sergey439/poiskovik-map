@@ -1,19 +1,51 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Поисковик – Историческая карта</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поисковик — Историческая карта</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     html, body, #map {
-      height: 100%;
-      margin: 0;
+      height: 100%; margin: 0;
+      font-family: sans-serif;
+    }
+    .toolbar {
+      position: absolute;
+      top: 10px; left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    .toolbar input, .toolbar select, .toolbar button {
+      margin: 5px 0;
+      width: 100%;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Поиск по названию">
+    <select id="categoryFilter">
+      <option value="all">Все категории</option>
+      <option value="история">История</option>
+      <option value="архитектура">Архитектура</option>
+      <option value="промышленность">Промышленность</option>
+    </select>
+    <hr>
+    <input type="text" id="titleInput" placeholder="Название объекта">
+    <textarea id="descInput" placeholder="Описание объекта"></textarea>
+    <input type="text" id="latlngInput" placeholder="Координаты (lat,lng)">
+    <select id="categoryInput">
+      <option value="история">История</option>
+      <option value="архитектура">Архитектура</option>
+      <option value="промышленность">Промышленность</option>
+    </select>
+    <button onclick="addCustomMarker()">Добавить объект</button>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -24,32 +56,63 @@
     }).addTo(map);
 
     const historicLayer = L.tileLayer('https://mapwarper.net/maps/tile/61189/{z}/{x}/{y}.png', {
-      attribution: 'Слой: MapWarper (тысячеверстка)',
-      opacity: 0.7
+      attribution: 'MapWarper', opacity: 0.6
     }).addTo(map);
 
-    const baseMaps = { "OpenStreetMap": osm };
-    const overlayMaps = { "Историческая карта": historicLayer };
-    L.control.layers(baseMaps, overlayMaps).addTo(map);
+    let allMarkers = [];
 
-    // Загрузка объектов из JSON
+    // Загрузка объектов
     fetch('objects.json')
       .then(res => res.json())
       .then(data => {
         data.forEach(obj => {
-          L.marker([obj.lat, obj.lng])
-            .addTo(map)
+          const marker = L.marker([obj.lat, obj.lng])
             .bindPopup(`<b>${obj.title}</b><br>${obj.description}`);
+          marker.category = obj.category;
+          marker.title = obj.title.toLowerCase();
+          marker.addTo(map);
+          allMarkers.push(marker);
         });
-      })
-      .catch(err => console.error("Ошибка загрузки объектов:", err));
+      });
 
-    // Вывод координат по клику
+    document.getElementById('searchInput').addEventListener('input', filterMarkers);
+    document.getElementById('categoryFilter').addEventListener('change', filterMarkers);
+
+    function filterMarkers() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const category = document.getElementById('categoryFilter').value;
+      allMarkers.forEach(marker => {
+        const matchesSearch = marker.title.includes(search);
+        const matchesCategory = category === 'all' || marker.category === category;
+        if (matchesSearch && matchesCategory) {
+          marker.addTo(map);
+        } else {
+          map.removeLayer(marker);
+        }
+      });
+    }
+
+    function addCustomMarker() {
+      const title = document.getElementById('titleInput').value;
+      const desc = document.getElementById('descInput').value;
+      const latlng = document.getElementById('latlngInput').value;
+      const category = document.getElementById('categoryInput').value;
+      if (!title || !latlng) return alert("Заполните все поля");
+      const [lat, lng] = latlng.split(',').map(Number);
+      const marker = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(`<b>${title}</b><br>${desc}`);
+      marker.category = category;
+      marker.title = title.toLowerCase();
+      allMarkers.push(marker);
+    }
+
     map.on('click', e => {
       const { lat, lng } = e.latlng;
-      alert(`Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      document.getElementById('latlngInput').value = `${lat.toFixed(5)},${lng.toFixed(5)}`;
     });
   </script>
 </body>
 </html>
+
 
