@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <title>Поисковик – Историческая карта</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map {
       height: 100%;
@@ -20,38 +17,39 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([49.8016, 73.1023], 10); // Центр — Караганда
+    const map = L.map('map').setView([49.8016, 73.1023], 10);
 
-    // Слой OpenStreetMap (фон)
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Историческая карта — советская топографическая (пример с MapWarper)
     const historicLayer = L.tileLayer('https://mapwarper.net/maps/tile/61189/{z}/{x}/{y}.png', {
       attribution: 'Слой: MapWarper (тысячеверстка)',
       opacity: 0.7
     }).addTo(map);
 
-    // Пример маркера
-    const marker = L.marker([49.8016, 73.1023]).addTo(map)
-      .bindPopup("<b>Караганда</b><br>Исторический центр");
+    const baseMaps = { "OpenStreetMap": osm };
+    const overlayMaps = { "Историческая карта": historicLayer };
+    L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-    // Клик по карте: вывод координат
-    map.on('click', function(e) {
+    // Загрузка объектов из JSON
+    fetch('objects.json')
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(obj => {
+          L.marker([obj.lat, obj.lng])
+            .addTo(map)
+            .bindPopup(`<b>${obj.title}</b><br>${obj.description}`);
+        });
+      })
+      .catch(err => console.error("Ошибка загрузки объектов:", err));
+
+    // Вывод координат по клику
+    map.on('click', e => {
       const { lat, lng } = e.latlng;
       alert(`Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     });
-
-    // Слои переключения
-    const baseMaps = {
-      "OpenStreetMap": osm
-    };
-    const overlayMaps = {
-      "Историческая карта": historicLayer
-    };
-
-    L.control.layers(baseMaps, overlayMaps).addTo(map);
   </script>
 </body>
 </html>
+
