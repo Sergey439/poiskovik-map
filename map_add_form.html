@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Карта Поисковика</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    #menu-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1001;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    #panel {
+      display: none;
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      width: 300px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    #panel input, #panel textarea, #panel select, #panel button {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 6px;
+    }
+    #layer-control {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+<div id="menu-toggle">☰</div>
+<div id="panel">
+  <h3>➕ Добавить объект</h3>
+  <input type="text" id="name" placeholder="Название" />
+  <textarea id="desc" placeholder="Описание"></textarea>
+  <input type="text" id="coords" placeholder="Координаты (lat,lng)" readonly />
+  <select id="category">
+    <option value="История">История</option>
+    <option value="Укрепление">Укрепление</option>
+    <option value="Поселение">Поселение</option>
+  </select>
+  <button onclick="addObject()">Добавить</button>
+</div>
+
+<div id="layer-control"></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const apiUrl = "https://script.google.com/macros/s/AKfycbw_MBtaH4cnULuZeF8dIOwSKB3qvXwVGFYX1td4gq-sqow1IKJ6Vub5HXk2Je_vPLP4bw/exec";
+const map = L.map('map').setView([49.803, 73.109], 10);
+
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'OpenStreetMap'
+}).addTo(map);
+
+const overlayLayer = L.imageOverlay("2115986.png", [[49.900, 72.800], [49.600, 73.200]]);
+
+const baseMaps = { "OSM": osmLayer };
+const overlayMaps = { "Топо карта (советская)": overlayLayer };
+
+L.control.layers(baseMaps, overlayMaps, { position: "bottomleft" }).addTo(map);
+
+map.on('click', function(e) {
+  document.getElementById('coords').value = `${e.latlng.lat.toFixed(5)},${e.latlng.lng.toFixed(5)}`;
+});
+
+async function addObject() {
+  const name = document.getElementById('name').value.trim();
+  const desc = document.getElementById('desc').value.trim();
+  const coords = document.getElementById('coords').value.trim();
+  const category = document.getElementById('category').value.trim();
+  if (!name || !coords) return alert("Введите название и координаты");
+
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, desc, coords, category })
+  });
+
+  if (res.ok) {
+    alert("Добавлено!");
+    document.getElementById('name').value = "";
+    document.getElementById('desc').value = "";
+    document.getElementById('coords').value = "";
+  } else {
+    alert("Ошибка при добавлении");
+  }
+}
+
+document.getElementById('menu-toggle').addEventListener('click', () => {
+  const panel = document.getElementById('panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+</script>
+</body>
+</html>
